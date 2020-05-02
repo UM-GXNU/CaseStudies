@@ -126,8 +126,6 @@ DomainModel CoCoME {
 		Items : Item* (Association)
 		Cashiers : Cashier* (Association)
 		Sales : Sale* ! (Association)
-		[INV]
-		inv BalanceGreatAndEqualZero*
 	}
 	Entity ProductCatalog {
 		id:Integer
@@ -141,7 +139,7 @@ DomainModel CoCoME {
 		isOpened : Boolean
 		[Refer]
 		ContainedSales : Sale* (Association)
-		BelongStore : Store ! (Association)
+		BelongedStore : Store ! (Association)
 	}
 	Entity Sale {
 		id:Integer
@@ -151,8 +149,8 @@ DomainModel CoCoME {
 		isReadytoPay : Boolean
 	
 		[Refer]
-		Belongstore : Store (Association)
-		BelongCashDesk : CashDesk ! (Association)
+		Belongedstore : Store (Association)
+		BelongedCashDesk : CashDesk ! (Association)
 		ContainedSalesLine : SalesLineItem* (Association)
 //		AssoicatedPayment : Payment (Association)
 	
@@ -168,33 +166,31 @@ DomainModel CoCoME {
 		quantity : Integer
 		subamount : Real
 		[Refer]
-		BelongSale : Sale ! (Association)
-		BelongItem : Item (Association)
+		BelongedSale : Sale ! (Association)
+		BelongedItem : Item (Association)
 	}
+
 
 	Entity Item {
 		id : Integer
-		barcode :* Integer
+		barcode :#Integer
 		name : String
 		price : Real
 		stockNumber : Integer
 		orderPrice : Real
 		[Refer]
-		BelongCatalog : ProductCatalog ! (Association)
+		BelongedCatalog : ProductCatalog ! (Association)
 	}
 	
 	Entity Payment {
 		id:Integer
 		amountTendered : Real
 		[Refer] 
-		BelongSale : Sale ! (Association)
+		BelongedSale : Sale ! (Association)
 	}
 	Entity CashPayment extends Payment {
 		
 		balance : Real
-	
-		[INV]
-		inv BalanceGreatAndEqualZero
 	
 	}
 	
@@ -209,20 +205,18 @@ DomainModel CoCoME {
 		subAmount : Real
 		[Refer]
 		Item : Item (Association)
-		BelongOrderProduct : OrderProduct(Association)
+		BelongedOrderProduct : OrderProduct(Association)
 	}
 	Entity Supplier {
 		id : Integer
 		name : String
-		[INV]
-		inv UniqueSupplier
 	}
 	
 	Entity OrderProduct {
 	
 		id : Integer
 		time : Date
-//		orderStatus : OrderStatus[NEW|RECEIVED|REQUESTED]
+		orderStatus : OrderStatus[NEW|RECEIVED|REQUESTED]
 		amount : Real
 		[Refer]
 		Supplier : Supplier (Association)
@@ -342,8 +336,9 @@ Workflow ProcessSaleWF {
 	}
 }
 
+
 Contract CoCoMEProcessSale::openStore(storeID : Integer) : Boolean {
-	
+
 	definition:
 		sto:Store = Store.allInstance()->any(s:Store | s.Id = storeID)
 
@@ -352,15 +347,14 @@ Contract CoCoMEProcessSale::openStore(storeID : Integer) : Boolean {
 		sto.IsOpened = false
 
 	postcondition:
-		// put------update
-		self.currentStore = sto and
 		sto.IsOpened = true and
+		self.currentStore = sto and
 		result = true
 
 }
 
 Contract CoCoMEProcessSale::closeStore(storeID : Integer) : Boolean {
-	
+
 	definition:
 		sto:Store = Store.allInstance()->any(s:Store | s.Id = storeID)
 
@@ -369,14 +363,13 @@ Contract CoCoMEProcessSale::closeStore(storeID : Integer) : Boolean {
 		sto.IsOpened = true
 
 	postcondition:
-		// put------update
 		sto.IsOpened = false and
 		result = true
 
 }
 
 Contract CoCoMEProcessSale::openCashDesk(cashDeskID : Integer) : Boolean {
-	
+
 	definition:
 		cd:CashDesk = CashDesk.allInstance()->any(s:CashDesk | s.Id = cashDeskID)
 
@@ -387,15 +380,14 @@ Contract CoCoMEProcessSale::openCashDesk(cashDeskID : Integer) : Boolean {
 		currentStore.IsOpened = true
 
 	postcondition:
-		// put------update
-		self.currentCashDesk = cd and
 		cd.IsOpened = true and
+		self.currentCashDesk = cd and
 		result = true
 
 }
 
 Contract CoCoMEProcessSale::closeCashDesk(cashDeskID : Integer) : Boolean {
-	
+
 	definition:
 		cd:CashDesk = CashDesk.allInstance()->any(s:CashDesk | s.Id = cashDeskID)
 
@@ -406,19 +398,20 @@ Contract CoCoMEProcessSale::closeCashDesk(cashDeskID : Integer) : Boolean {
 		currentStore.IsOpened = true
 
 	postcondition:
-		// put------update
-		self.currentCashDesk = cd and
 		cd.IsOpened = false and
+		self.currentCashDesk = cd and
 		result = true
 
 }
+
 
 Contract CoCoMEProcessSale::makeNewSale() : Boolean {
 
 	/* preconditions:  none */
 	precondition:
 		currentCashDesk.oclIsUndefined() = false and
-		currentCashDesk.IsOpened = true and
+		currentCashDesk.IsOpened = true 
+		and
 		(currentSale.oclIsUndefined() = true or
 			(currentSale.oclIsUndefined() = false and
 				currentSale.IsComplete = true
@@ -432,10 +425,9 @@ Contract CoCoMEProcessSale::makeNewSale() : Boolean {
 	 * currentSale became s
 	 */
 	postcondition:
-		// post------add
 		let s:Sale in
 		s.oclIsNew() and
-		s.BelongCashDesk = currentCashDesk and
+		s.BelongedCashDesk = currentCashDesk and
 		s.IsComplete = false and
 		s.IsReadytoPay = false and
 		Sale.allInstance()->includes(s) and
@@ -464,16 +456,15 @@ Contract CoCoMEProcessSale::enterItem(barcode : Integer, quantity : Integer) : B
 	 * subamount became item.price * quantity 
 	 */
 	postcondition:
-		// post------add
 		let sli:SalesLineItem in
 		sli.oclIsNew() and
-		self.currentSaleLine = sli and
-		sli.BelongSale = currentSale and
+		sli.BelongedSale = currentSale and
 		sli.Quantity = quantity and
-		sli.BelongItem = item and
+		sli.BelongedItem = item and
 		item.StockNumber = item.StockNumber@pre - quantity and
 		sli.Subamount = item.Price * quantity and
 		SalesLineItem.allInstance()->includes(sli) and
+		self.currentSaleLine = sli and
 		result = true
 
 }
@@ -497,11 +488,13 @@ Contract CoCoMEProcessSale::endSale() : Real {
 	 * currentSale.IsReadytoPay became true
 	 */
 	postcondition: 
-		// put------update
 		currentSale.Amount = sub.sum() and
 		currentSale.IsReadytoPay = true and
 		result = currentSale.Amount
 }
+
+
+
 
 Contract CoCoMEProcessSale::makeCashPayment(amount : Real) : Boolean {
 
@@ -522,12 +515,11 @@ Contract CoCoMEProcessSale::makeCashPayment(amount : Real) : Boolean {
 	 * cp.Balance became the value of tendered amount minus current Sale amount
 	 */
 	postcondition:
-		// post------add
 		let cp:CashPayment in
 		cp.oclIsNew() and
 		cp.AmountTendered = amount and
-		cp.BelongSale = currentSale and
-		currentSale.Belongstore = currentStore and
+		cp.BelongedSale = currentSale and
+//		currentSale.Belongedstore = currentStore and
 		currentSale.IsComplete = true and
 		currentSale.Time.isEqual(Now) and
 		cp.Balance = amount - currentSale.Amount and
@@ -535,7 +527,6 @@ Contract CoCoMEProcessSale::makeCashPayment(amount : Real) : Boolean {
 		result = true
 
 }
-
 
 Contract CoCoMEProcessSale::makeCardPayment(cardAccountNumber : String, expiryDate : Date, fee: Real) : Boolean {
 
@@ -556,15 +547,14 @@ Contract CoCoMEProcessSale::makeCardPayment(cardAccountNumber : String, expiryDa
 	 * Sale.time became now 
 	 */
 	postcondition:
-		// post------add
 		let cdp:CardPayment in
 		cdp.oclIsNew() and
 		cdp.AmountTendered = fee and
-		cdp.BelongSale = currentSale and
+		cdp.BelongedSale = currentSale and
 		cdp.CardAccountNumber = cardAccountNumber and
 		cdp.ExpiryDate = expiryDate and
 		CardPayment.allInstance()->includes(cdp) and
-		currentSale.Belongstore = currentStore and
+//		currentSale.Belongedstore = currentStore and
 		currentSale.IsComplete = true and
 		currentSale.Time.isEqual(Now) and
 		result = true
@@ -592,6 +582,7 @@ Contract CoCoMEOrderProducts::makeNewOrder(orderid : Integer) : Boolean {
 	postcondition:
 		let op:OrderProduct in
 		op.oclIsNew() and
+		op.OrderStatus = OrderStatus::NEW and
 		op.Id = orderid and
 		op.Time.isEqual(Now) and
 		OrderProduct.allInstance()->includes(op) and
@@ -670,6 +661,7 @@ Contract CoCoMEOrderProducts::placeOrder() : Boolean {
 	 * compute total amount of order product
 	 */
 	postcondition:
+		currentOrderProduct.OrderStatus = OrderStatus::REQUESTED and
 		currentOrderProduct.ContainedEntries->forAll(o:OrderEntry |
 			currentOrderProduct.Amount = currentOrderProduct.Amount@pre + o.SubAmount)
 		and
@@ -704,6 +696,7 @@ Contract CoCoMESystem::receiveOrderedProduct(orderID : Integer) : Boolean {
 		op.oclIsUndefined() = false
 	/* postcondition: the property OrderStatus of OrderProduct became RECEIVED */
 	postcondition:
+		op.OrderStatus = OrderStatus::RECEIVED and
 		op.ContainedEntries->forAll(oe:OrderEntry |
 			oe.Item.StockNumber = oe.Item.StockNumber@pre + oe.Quantity)
 		and
@@ -804,7 +797,7 @@ Contract  ManageStoreCRUDService::deleteStore(id : Integer) : Boolean {
 	
 	/* precondition: the instance store was found in the system */
 	precondition:
-		store.oclIsUndefined() = false
+		store.oclIsUndefined() = false 
 	
 	/* postcondition: the instance store was deleted from the system */
 	postcondition:
@@ -880,7 +873,7 @@ Contract  ManageProductCatalogCRUDService::deleteProductCatalog(id : Integer) : 
 	
 	/* precondition: the instance productcatalog was found in the system */
 	precondition:
-		productcatalog.oclIsUndefined() = false
+		productcatalog.oclIsUndefined() = false 
 	
 	/* postcondition: the instance productcatalog was deleted from the system */
 	postcondition:
@@ -958,7 +951,7 @@ Contract  ManageCashDeskCRUDService::deleteCashDesk(id : Integer) : Boolean {
 	
 	/* precondition: the instance cashdesk was found in the system */
 	precondition:
-		cashdesk.oclIsUndefined() = false
+		cashdesk.oclIsUndefined() = false 
 	
 	/* postcondition: the instance cashdesk was deleted from the system */
 	postcondition:
@@ -1034,7 +1027,7 @@ Contract  ManageCashierCRUDService::deleteCashier(id : Integer) : Boolean {
 	
 	/* precondition: the instance cashier was found in the system */
 	precondition:
-		cashier.oclIsUndefined() = false
+		cashier.oclIsUndefined() = false 
 	
 	/* postcondition: the instance cashier was deleted from the system */
 	postcondition:
@@ -1116,7 +1109,7 @@ Contract  ManageItemCRUDService::deleteItem(barcode : Integer) : Boolean {
 	
 	/* precondition: the instance item was found in the system */
 	precondition:
-		item.oclIsUndefined() = false
+		item.oclIsUndefined() = false 
 	
 	/* postcondition: the instance item was deleted from the system */
 	postcondition:
@@ -1192,7 +1185,7 @@ Contract  ManageSupplierCRUDService::deleteSupplier(id : Integer) : Boolean {
 	
 	/* precondition: the instance supplier was found in the system */
 	precondition:
-		supplier.oclIsUndefined() = false
+		supplier.oclIsUndefined() = false 
 	
 	/* postcondition: the instance supplier was deleted from the system */
 	postcondition:
