@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.2.6.RELEASE</version>
-		<relativePath /> <!-- lookup parent from repository -->
+		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
 	<artifactId>test</artifactId>
@@ -21,6 +20,33 @@
 
 
 	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+		</dependency>
+		
+		<dependency>
+			<groupId>javax.json.bind</groupId>
+			<artifactId>javax.json.bind-api</artifactId>
+			<version>1.0.0-RC2</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-java</artifactId>
+			<version>3.11.0</version>
+			<scope>compile</scope>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt</artifactId>
+			<version>0.6.0</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -43,6 +69,11 @@
 			<artifactId>fastjson</artifactId>
 			<version>1.2.47</version>
 		</dependency>
+		
+		
+		
+		
+		
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -54,51 +85,6 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.seleniumhq.selenium</groupId>
-			<artifactId>selenium-java</artifactId>
-			<version>3.11.0</version>
-			<scope>compile</scope>
-		</dependency>
-		<!-- JSON-P API -->
-		<dependency>
-			<groupId>javax.json</groupId>
-			<artifactId>javax.json-api</artifactId>
-			<version>1.1</version>
-		</dependency>
-
-		<!-- JSON-P RI -->
-		<dependency>
-			<groupId>org.glassfish</groupId>
-			<artifactId>javax.json</artifactId>
-			<version>1.1</version>
-			<scope>runtime</scope>
-		</dependency>
-
-		<!-- JSON-B API -->
-		<dependency>
-			<groupId>javax.json.bind</groupId>
-			<artifactId>javax.json.bind-api</artifactId>
-			<version>1.0.0-RC2</version>
-		</dependency>
-
-		<!-- Yasson (JSON-B RI) -->
-		<dependency>
-			<groupId>org.eclipse</groupId>
-			<artifactId>yasson</artifactId>
-			<version>1.0.0-RC1</version>
-			<scope>runtime</scope>
-		</dependency>
 	</dependencies>
 
 	<build>
@@ -107,6 +93,54 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			
+			
+			
+			
+			
+		  <plugin>
+		    <artifactId>maven-clean-plugin</artifactId>
+		    <version>3.1.0</version>
+		    <configuration>
+		      <filesets>
+		        <fileset>
+		          <directory>src/main</directory>
+		          <includes>
+		            <include>**/*</include>
+	<!-- 	            <include>**/*.fxml</include>
+		            <include>**/*.css</include>
+		            <include>**/*.fxgraph</include> -->
+		          </includes>
+		          <excludes>
+		            <exclude>**/static/**/*.*</exclude>
+		            <exclude>**/application.properties</exclude>  
+		            <exclude>**/TestApplication.java</exclude>     
+		            <exclude>**/TitleAndUrl.java</exclude>               
+		          </excludes>
+		          <followSymlinks>false</followSymlinks>
+		        </fileset>
+		        
+		           <fileset>
+		          <directory>src-gen</directory>
+		          <includes>
+		            <include>**/*</include>
+	<!-- 	            <include>**/*.fxml</include>
+		            <include>**/*.css</include>
+		            <include>**/*.fxgraph</include> -->
+		          </includes>
+		          <followSymlinks>false</followSymlinks>
+		        </fileset>
+		        
+		        
+		      </filesets>
+		    </configuration>
+		  </plugin>
+			
+			
+			
+			
+			
+			
 		</plugins>
 	</build>
 
