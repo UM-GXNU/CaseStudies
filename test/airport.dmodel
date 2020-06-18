@@ -1,4 +1,5 @@
 UseCaseModel CoCoME {
+	
 	UC::createUser()
 	UC::queryUser()
 	UC::modifyUser()
@@ -82,7 +83,7 @@ DomainModel CoCoME {
 	
 	Entity User {
 		id : Integer
-		name : #String
+		name : String
 		password : String
 		phone : String
 		
@@ -94,7 +95,7 @@ DomainModel CoCoME {
 	}
 	Entity Role {
 		id : Integer     // 普通用户，科室经理 ，管理人员 ，部门队长 ，部门人员
-		roleCode :#Integer
+		roleCode :Integer
 		remark : String
 	}
 	Entity Department{
@@ -115,7 +116,7 @@ DomainModel CoCoME {
 		BelongedDepartment:Department (Association)			//报修部门   机关各部室、安检、地勤、逸飞翔、货站、候管、航信、安保、航食、空港、运指、公安
 //		ContainedTbRepairExtra : TbRepairExtra* (Association)
 		[INV]
-		inv repairsStatus
+//		inv repairsStatus
 	}
 	Entity TbRepairExtra {
 		
@@ -136,12 +137,11 @@ DomainModel CoCoME {
 		BelongedRelayDep:Department(Association)	//转发部门    机电队、暖通队、电力队、综合队、汽车修理厂
 		BelongedDistribution:User(Association)	//所派工用户
 		[INV]
-		inv IsAcceptAndBelongedUser
-		inv IsAcceptAndAdminAndBelongedAssignDepart
-		inv IsAcceptAndIsCompleteAndBelongedAssignDepart
-		inv IsCompleteAndBelongedUser
-		inv IsCompleteAndBelongedAssignDepart
-//		inv IsAcceptOrBelongedUser
+//		inv IsAcceptAndBelongedUser
+//		inv IsAcceptAndAdminAndBelongedAssignDepart
+//		inv IsAcceptAndIsCompleteAndBelongedAssignDepart
+//		inv IsCompleteAndBelongedUser
+//		inv IsCompleteAndBelongedAssignDepart
 		
 	}
 }
@@ -180,6 +180,7 @@ Service RepairService {
 	backtransmit()  //退回工单
 	
 	approval()  //候管审批
+	arbitration()//仲裁
 	[TempProperty]
 	currentUser : User
 }
@@ -188,7 +189,7 @@ Service RepairService {
 Contract  RepairService::userLogin(name : String , password : String) : Boolean {
 	
 	definition:
-		user:User = User.allInstance()->any(u:User | u.name = name)
+		user:User = User.allInstance()->any(u:User | u.name = name and u.password = password)
 	precondition:
 		user.oclIsUndefined() = false and user.password = password 
 	postcondition:
@@ -221,7 +222,7 @@ Contract  RepairService::submitRepair(departmentid : Integer ,repairName : Strin
 		tr.belongedUser = currentUser and
 		TbRepair.allInstance()->includes(tr) and
 		
-		result true
+		result = true
 }
 
 Contract  RepairService::submitRepairExtra( id : Integer) : Boolean {
@@ -240,7 +241,7 @@ Contract  RepairService::submitRepairExtra( id : Integer) : Boolean {
 		if tbRepair.place = '候机楼'
 		then tre.admin=false
 		else tre.admin=true
-		endif
+		endif and
 		tre.isReject = false and
 		tre.isAccept = false and
 		tre.isComplete = false and
@@ -250,7 +251,7 @@ Contract  RepairService::submitRepairExtra( id : Integer) : Boolean {
 		tre.belongedUser = currentUser and
 		tre.BelongedAssignDepart = depart1 and
 		TbRepairExtra.allInstance()->includes(tre) and
-		result true
+		result = true
 }
 //-----------------------------------------------------------------------------------------
 
@@ -264,7 +265,7 @@ Contract  RepairService::notAcceptAa() : Set(TbRepairExtra) {
 		currentUser.oclIsUndefined() = false
 		
 	postcondition:
-		result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndBelongedUser = false and currentUser)
+		result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.BelongedUser = currentUser)
 }
 
 //查询当前用户已受理的信息
@@ -274,7 +275,7 @@ Contract  RepairService::acceptedAa() : Set(TbRepairExtra) {
 		currentUser.oclIsUndefined() = false
 		
 	postcondition:
-		result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndBelongedUser = true and currentUser)
+		result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = true and tbe.BelongedUser = currentUser)
 }
 //查询当前用户已完成的信息
 Contract  RepairService::completedAa() : Set(TbRepairExtra) {
@@ -283,7 +284,7 @@ Contract  RepairService::completedAa() : Set(TbRepairExtra) {
 		currentUser.oclIsUndefined() = false
 		
 	postcondition:
-		result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsCompleteAndBelongedUser = true and currentUser)
+		result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedUser = currentUser)
 }
 //查询某一个保修单的详细信息
 Contract  RepairService::TbInfo(id:Integer) : TbRepairExtra {
@@ -332,19 +333,19 @@ Contract  RepairService::notAcceptBa() : Set(TbRepairExtra) {
 		
 	postcondition:
 		if currentUser.BelongedDepartment = depart1
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndAdminAndBelongedAssignDepart = false and true and depart1)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true and tbe.BelongedAssignDepart = depart1)
 		endif 
 		
 		if currentUser.BelongedDepartment = depart2
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndAdminAndBelongedAssignDepart = false and true and depart2)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true and tbe.BelongedAssignDepart = depart2)
 		endif 
 		
 		if currentUser.BelongedDepartment = depart3
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndAdminAndBelongedAssignDepart = false and true and depart3)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true and tbe.BelongedAssignDepart = depart3)
 		endif 
 		
 		if currentUser.BelongedDepartment = depart4
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndAdminAndBelongedAssignDepart = false and true and depart4)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true and tbe.BelongedAssignDepart = depart4)
 		endif 
 		
 		result = null
@@ -369,19 +370,19 @@ Contract  RepairService::acceptedBa() : Set(TbRepairExtra) {
 		
 	postcondition:
 		if  depart1 = currentUser.BelongedDepartment
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndIsCompleteAndBelongedAssignDepart = true and false and depart1)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept= true and tbe.IsComplete = false  and  tbe.BelongedAssignDepart = depart1)
 		endif 
 		
 		if currentUser.BelongedDepartment = depart2
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndIsCompleteAndBelongedAssignDepart = true and false and depart2)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept= true and tbe.IsComplete = false  and  tbe.BelongedAssignDepart = depart2)
 		endif 
 		
 		if currentUser.BelongedDepartment = depart3
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndIsCompleteAndBelongedAssignDepart = true and false and depart3)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept= true and tbe.IsComplete = false  and  tbe.BelongedAssignDepart = depart3)
 		endif 
 		
 		if currentUser.BelongedDepartment = depart4
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAcceptAndIsCompleteAndBelongedAssignDepart = true and false and depart4)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept= true and tbe.IsComplete = false  and  tbe.BelongedAssignDepart = depart4)
 		endif 
 		result = null
 }
@@ -407,20 +408,21 @@ Contract  RepairService::completedBa() : Set(TbRepairExtra) {
 		
 	postcondition:
 		if currentUser.BelongedDepartment = depart1
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsCompleteAndBelongedAssignDepart = true and depart1)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart1 )
 		endif 
 		
 		if currentUser.BelongedDepartment = depart2
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsCompleteAndBelongedAssignDepart = true and depart2)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart2 )
 		endif 
 		
 		if currentUser.BelongedDepartment = depart3
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsCompleteAndBelongedAssignDepart = true and depart3)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart3 )
 		endif 
 		
 		if currentUser.BelongedDepartment = depart4
-		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsCompleteAndBelongedAssignDepart = true and depart4)
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart4 )
 		endif 
+		and
 		result = null
 }
 //队长派工
@@ -509,7 +511,7 @@ Contract  RepairService::approval(tbId : Integer , isApproved : Boolean) : Boole
 		else 
 			tre.isReject=true and 
 			tre.admin = false
-		endif
+		endif and
 		result = true
 }
 
