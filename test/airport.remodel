@@ -1,0 +1,729 @@
+UseCaseModel CoCoME {
+	
+	UC::createUser()
+	UC::queryUser()
+	UC::modifyUser()
+	UC::deleteUser()
+	UC::createDepartment()
+	UC::queryDepartment()
+	UC::modifyDepartment()
+	UC::deleteDepartment()
+	UC::createRole()
+	UC::queryRole()
+	UC::modifyRole()
+	UC::deleteRole()
+	UC::userLogin()
+	UC::submitRepair()
+	UC::submitRepairExtra()
+	UC::notAcceptAa()
+	UC::acceptedAa()
+	UC::completedAa()
+	UC::TbInfo()
+	UC::notAcceptA()
+	UC::notAcceptBa()
+	UC::acceptedBa()
+	UC::completedBa()
+	UC::allocation()
+	UC::transmit()
+	UC::backtransmit()
+	UC::approval()
+	UC::receiveTb()
+	UC::completeTb()
+	UC::arbitration()
+	UC::scoring()
+	 
+	Actor Ordinary{//普通用户
+		userLogin
+		submitRepair
+		submitRepairExtra
+		notAcceptAa
+		acceptedAa
+		completedAa
+		TbInfo    //报修工单信息
+		scoring   //评价打分
+	}
+	Actor Manage{//候管管理用户和部门经理
+		userLogin
+		approval
+		arbitration
+	}
+	Actor Master{//部门队长
+		userLogin
+		notAcceptBa
+		acceptedBa
+		completedBa
+		allocation
+		transmit     //转发
+		backtransmit  //退回
+	}
+	Actor Worker{//部门人员
+		userLogin
+		completeTb
+		receiveTb
+	}
+	
+	Actor SystemManage {
+		createUser
+		queryUser
+		modifyUser
+		deleteUser
+		createRole
+		queryRole
+		modifyRole
+		deleteRole
+		createDepartment
+		queryDepartment
+		modifyDepartment
+		deleteDepartment
+	}
+}
+
+
+DomainModel CoCoME {
+	
+	Entity User {
+		id : Integer
+		name : String
+		password : String
+		phone : String
+		
+		[Refer]
+		BelongedRole : Role (Association)
+		BelongedDepartment : Department(Association)
+		[INV]
+//		inv UniqueCashDeskId
+	}
+	Entity Role {
+		id : Integer     // 普通用户，科室经理 ，管理人员 ，部门队长 ，部门人员
+		roleCode :Integer
+		remark : String
+	}
+	Entity Department{
+		id:Integer
+		name:String
+	}
+	
+	Entity TbRepair {
+		id : Integer
+		repairName : String			//报修人
+		phone : String				//报修电话
+		place : String    			//报修位置 //应该有具体的几个位置供选择
+		repairsStatus : Integer   	//故障类别   机械设备、制冷制暖设备、照明及供电设备、供水及土建相关、汽车维修预约
+		describeContent : String	//报修描述
+		time:Date
+		[Refer]
+		BelongedUser : User (Association)
+		BelongedDepartment:Department (Association)			//报修部门   机关各部室、安检、地勤、逸飞翔、货站、候管、航信、安保、航食、空港、运指、公安
+//		ContainedTbRepairExtra : TbRepairExtra* (Association)
+		[INV]
+//		inv repairsStatus
+	}
+	Entity TbRepairExtra {
+		
+		id : Integer
+		admin:Boolean  		//候管审核
+		isReject:Boolean	//退回
+		relayNum:Integer    //转发次数
+		arbitrate:Boolean	//是否已经仲裁
+		isAccept:Boolean	//是否受理
+		isComplete:Boolean	//是否完成维修
+		score:Integer      //评价分数  1~5星
+		remark:String		//评语
+		
+		[Refer]
+		BelongedTbRepair : TbRepair (Association)
+		BelongedUser : User (Association)
+		BelongedAssignDepart: Department(Association) //所属部门编号
+		BelongedRelayDep:Department(Association)	//转发部门    机电队、暖通队、电力队、综合队、汽车修理厂
+		BelongedDistribution:User(Association)	//所派工用户
+		[INV]
+//		inv IsAcceptAndBelongedUser
+//		inv IsAcceptAndAdminAndBelongedAssignDepart
+//		inv IsAcceptAndIsCompleteAndBelongedAssignDepart
+//		inv IsCompleteAndBelongedUser
+//		inv IsCompleteAndBelongedAssignDepart
+		
+	}
+}
+//
+Service SystemService {
+
+	[Operation]
+	createUser(id, name,password,phone,roleCode)
+	queryUser()
+	modifyUser(id, name,passwoed,phone,roleCode)
+	deleteUser()
+	createRole(id,remark,roleCode)
+	queryRole()
+	modifyRole(id,remark,roleCode)
+	deleteRole()
+
+}
+
+
+Service RepairService {
+
+	[Operation]
+	userLogin()
+	submitRepair()
+	submitRepairExtra()
+	notAcceptAa()  //普通用户未受理列表
+	acceptedAa()	//普通用户已受理列表
+	completedAa()	//普通用户已完成列表
+	TbInfo()		//某条保修单的信息
+	
+	notAcceptBa()   //部门队长未受理列表
+	acceptedBa()    //部门队长已受理列表
+	completedBa()   //部门队长已完成列表
+	allocation()    //指派员工
+	transmit()      //转发其他部门
+	backtransmit()  //退回工单
+	
+	approval()  //候管审批
+	arbitration()//仲裁
+	[TempProperty]
+	currentUser : User
+}
+
+//队长转发其他部门
+Contract  RepairService::transmit(departId : Integer,tbId : Integer) : Boolean {
+	definition:
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departId),
+		tbRepairExtra:TbRepairExtra = TbRepairExtra.allInstance()->any(tbRepair:TbRepair | tbRepair.id = tbId)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and dp.oclIsUndefined() = false and tbRepairExtra.oclIsUndefined() = false and tbRepairExtra.arbitrate = false
+		
+	postcondition:
+		tbRepairExtra.relayNum = tbRepairExtra.relayNum@pre + 1 and
+		tbRepairExtra.belongedRelayDep = dp and
+		result = true
+}
+
+Contract  RepairService::userLogin(name : String , password : String) : Boolean {
+	
+	definition:
+		user:User = User.allInstance()->any(u:User | u.name = name and u.password = password)
+	precondition:
+		user.oclIsUndefined() = false
+	postcondition:
+		self.currentUser = user and
+		result = true
+}
+//------------------------------------------------------------
+//报修单位（必选）、报修人（必填）、反馈电话（必填）、报修位置（必填）、故障类别（必选）,、故障描述（必选）
+Contract  RepairService::submitRepair(departmentid : Integer ,repairName : String, phone : String, place : String,repairsStatus : Integer,describeContent:String) : Boolean {
+	definition:
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departmentid)
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		repairName.oclIsUndefined() = false and 
+		phone.oclIsUndefined() = false and 
+		place.oclIsUndefined() = false and
+		repairsStatus.oclIsUndefined() = false and
+		dp.oclIsUndefined() = false
+		
+	postcondition:
+		let tr:TbRepair in
+		tr.oclIsNew() and
+		tr.BelongedDepartment = dp and
+		tr.repairName = repairName and
+		tr.phone = phone and
+		tr.place = place and
+		tr.repairsStatus = repairsStatus and
+		tr.describeContent = describeContent and
+		tr.time.isEqual(Now) and
+		tr.belongedUser = currentUser and
+		TbRepair.allInstance()->includes(tr) and
+		
+		result = true
+}
+
+Contract  RepairService::submitRepairExtra( id : Integer) : Boolean {
+	
+	definition:
+		depart1:Department =Department.allInstance()->any(department:Department | department.id = 1),
+		tbRepair:TbRepair = TbRepair.allInstance()->any(tbRepair:TbRepair | tbRepair.id = id)
+	
+	precondition:
+		currentUser.oclIsUndefined() = false and tbRepair.oclIsUndefined() = false
+		
+	postcondition:
+		let tre:TbRepairExtra in
+		tre.oclIsNew() and
+		//如果报修区域是候机楼则需要候管审核
+		if tbRepair.place = "候机楼"
+		then tre.admin=false
+		else tre.admin=true
+		endif and
+		tre.isReject = false and
+		tre.isAccept = false and
+		tre.isComplete = false and
+		tre.arbitrate = false and
+		tre.relayNum = 0 and
+		tre.BelongedTbRepair = tbRepair and
+		tre.belongedUser = currentUser and
+		tre.BelongedAssignDepart = depart1 and
+		TbRepairExtra.allInstance()->includes(tre) and
+		result = true
+}
+//-----------------------------------------------------------------------------------------
+
+
+					//普通用户
+					
+////查询当前用户未受理的信息
+Contract  RepairService::notAcceptAa() : Set(TbRepairExtra) {
+	
+	precondition:
+		currentUser.oclIsUndefined() = false
+		
+	postcondition:
+		result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.BelongedUser = currentUser)
+}
+
+//查询当前用户已受理的信息
+Contract  RepairService::acceptedAa() : Set(TbRepairExtra) {
+	
+	precondition:
+		currentUser.oclIsUndefined() = false
+		
+	postcondition:
+		result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = true and tbe.BelongedUser = currentUser)
+}
+//查询当前用户已完成的信息
+Contract  RepairService::completedAa() : Set(TbRepairExtra) {
+	
+	precondition:
+		currentUser.oclIsUndefined() = false
+		
+	postcondition:
+		result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedUser = currentUser)
+}
+//查询某一个保修单的详细信息
+Contract  RepairService::TbInfo(id:Integer) : TbRepairExtra {
+	definition:
+		tre:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = id)
+		
+	precondition:
+		tre.oclIsUndefined() = false
+		
+	postcondition:
+		result = tre
+}
+//评价打分
+Contract  RepairService::scoring(tbid:Integer,score:Integer,remark:String) : Boolean {
+	definition:
+		tre:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbid)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and tre.oclIsUndefined() = false and  currentUser = tre.BelongedUser 
+		
+	postcondition:
+		tre.score = score and 
+		tre.remark = remark and
+		result = true
+}
+//-----------------------------------------------------------------------------------------
+					//部门队长
+					
+Contract  RepairService::notAcceptBa() : Set(TbRepairExtra) {
+	//查询当前部门的未受理工单
+	//1.获取当前队长用户的信息
+	//2.判断该用户所属部门
+	//3.根据三个参数进行查询-----是否受理，候管是否审核，所属部门
+	definition:
+		depart1:Department =Department.allInstance()->any(department:Department | department.id = 1),
+		depart2:Department =Department.allInstance()->any(department:Department | department.id = 2),
+		depart3:Department =Department.allInstance()->any(department:Department | department.id = 3),
+		depart4:Department =Department.allInstance()->any(department:Department | department.id = 4)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		depart1.oclIsUndefined() = false and 
+		depart2.oclIsUndefined() = false and 
+		depart3.oclIsUndefined() = false and 
+		depart4.oclIsUndefined() = false 
+		
+	postcondition:
+		if currentUser.BelongedDepartment = depart1
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true  and tbe.BelongedAssignDepart = depart1)
+		else 
+			if currentUser.BelongedDepartment = depart2
+			then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true  and tbe.BelongedAssignDepart = depart2)
+			else 
+					if currentUser.BelongedDepartment = depart3
+							then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true  and tbe.BelongedAssignDepart = depart3)
+					else 
+							result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true  and tbe.BelongedAssignDepart = depart4)
+					endif
+			endif 
+
+		endif 
+		
+
+}
+
+Contract  RepairService::acceptedBa() : Set(TbRepairExtra) {
+	
+	definition:
+	   	depart1:Department =Department.allInstance()->any(department:Department | department.id = 1),
+		
+		depart2:Department =Department.allInstance()->any(department:Department | department.id = 2)
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		depart1.oclIsUndefined() = false and 
+		depart2.oclIsUndefined() = false  
+
+		
+	postcondition:
+		if  depart1 = currentUser.BelongedDepartment
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept= true and tbe.IsComplete = false  and  tbe.BelongedAssignDepart = depart1)
+		else result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept= true and tbe.IsComplete = false  and  tbe.BelongedAssignDepart = depart2)
+		endif 
+		
+
+}
+
+
+Contract  RepairService::completedBa() : Set(TbRepairExtra) {
+	
+	definition:
+	    depart1:Department =Department.allInstance()->any(department:Department | department.id = 1),
+		
+		depart2:Department =Department.allInstance()->any(department:Department | department.id = 2),
+		
+		depart3:Department =Department.allInstance()->any(department:Department | department.id = 3),
+		
+		depart4:Department =Department.allInstance()->any(department:Department | department.id = 4)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		depart1.oclIsUndefined() = false and 
+		depart2.oclIsUndefined() = false and 
+		depart3.oclIsUndefined() = false and 
+		depart4.oclIsUndefined() = false 
+		
+	postcondition:
+		if currentUser.BelongedDepartment = depart1
+		then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart1)
+		else result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart2)
+		endif 
+		
+
+}
+
+//队长派工
+Contract  RepairService::allocation(userId : Integer,tbId : Integer) : Boolean {
+	definition:
+		user:User = User.allInstance()->any(user:User | user.id = userId),
+		tbRepairExtra:TbRepairExtra = TbRepairExtra.allInstance()->any(tbRepair:TbRepair | tbRepair.id = tbId)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and user.oclIsUndefined() = false and tbRepairExtra.oclIsUndefined() = false
+		
+	postcondition:
+		tbRepairExtra.belongedDistribution = user and
+		result = true
+}
+
+
+
+
+
+//队长退回工单
+Contract  RepairService::backtransmit(tbId : Integer) : Boolean {
+	
+	definition:
+		tbRepairExtra:TbRepairExtra = TbRepairExtra.allInstance()->any(tbRepair:TbRepair | tbRepair.id = tbId)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and tbRepairExtra.oclIsUndefined() = false and 
+		currentUser.belongedDepartment = tbRepairExtra.belongedAssignDepart
+		
+	postcondition:
+		tbRepairExtra.isReject = true and
+		result = true
+}
+//------------------------------------------------------------
+//          部门经理
+//
+//仲裁
+Contract  RepairService::arbitration(tbId : Integer , departmentid : Integer) : Boolean {
+	
+	definition:
+		tbRepairExtra:TbRepairExtra = TbRepairExtra.allInstance()->any(tbRepair:TbRepair | tbRepair.id = tbId) ,
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departmentid)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and tbRepairExtra.oclIsUndefined() = false and tbRepairExtra.relayNum > 3 and dp.oclIsUndefined() = false
+		
+	postcondition:
+		tbRepairExtra.arbitrate = true and
+		tbRepairExtra.belongedRelayDep = dp and
+		result = true
+}
+
+
+//候管审批
+Contract  RepairService::approval(tbId : Integer , isApproved : Boolean) : Boolean {
+	
+	
+	definition:
+		tbRepair:TbRepair = TbRepair.allInstance()->any(tbRepair:TbRepair | tbRepair.id = tbId),
+		tre:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbId),
+		role:Role = Role.allInstance()->any(role:Role | role.id = 2)   //侯管角色
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and tbRepair.oclIsUndefined() = false and tre.oclIsUndefined() = false and tbRepair.place = "候机楼"  and
+		currentUser.belongedRole = role
+		
+	postcondition:
+		if isApproved = true
+		then 
+			tre.isReject=false and 
+			tre.admin = true and
+			result = true
+		else 
+			tre.isReject=true and 
+			tre.admin = false and 
+			result = true
+		endif 
+	
+}
+
+//------------------------------------------------------------
+//          部门员工
+
+//接收工单
+Contract  RepairService::receiveTb(tbId : Integer) : Boolean {
+	definition:
+		tre:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbId),
+		role:Role = Role.allInstance()->any(role:Role | role.id = 4)  //维修人员角色
+	precondition:
+		currentUser.oclIsUndefined() = false and tre.oclIsUndefined() = false and currentUser.belongedRole = role
+	postcondition:
+		tre.isAccept = true and 
+		result = true 
+}
+
+//完成工单
+Contract  RepairService::completeTb(tbId : Integer) : Boolean {
+	definition:
+		tre:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbId),
+		role:Role = Role.allInstance()->any(role:Role | role.id = 4)  //维修人员角色
+	precondition:
+		currentUser.oclIsUndefined() = false and tre.oclIsUndefined() = false and currentUser.belongedRole = role
+	postcondition:
+		tre.isComplete = true and 
+		result = true 
+}
+
+
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+
+
+Contract  SystemService::createUser(id : Integer, name : String , password : String , phone : String, roleCode : Integer ,departmentid : Integer) : Boolean {
+	
+	definition:
+	
+		user:User = User.allInstance()->any(u:User | u.id = id) ,
+		role:Role = Role.allInstance()->any(r:Role | r.roleCode = roleCode),
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departmentid)
+		
+	precondition:
+	
+		user.oclIsUndefined() = true and
+		role.oclIsUndefined() = false and 
+		dp.oclIsUndefined() = false
+	
+	postcondition:
+	
+		let u:User in
+		u.oclIsNew() and
+		u.Id = id and
+		u.name = name and
+		u.password = password and
+		u.phone = phone and
+		u.belongedDepartment = dp and
+		u.belongedRole = role and
+		User.allInstance()->includes(u) and
+		result = true
+}
+
+//entity query operation 
+Contract  SystemService::queryUser(id : Integer) : User {
+	
+	definition:
+		user:User = User.allInstance()->any(u:User | u.Id = id)
+	
+	precondition:
+		user.oclIsUndefined() = false
+		
+	postcondition:
+		result = user
+}
+
+//entity modify operation 
+Contract  SystemService::modifyUser(id : Integer, name : String , password : String , phone : String, roleCode : Integer ,departmentid : Integer) : Boolean{
+	
+	definition:
+		user:User = User.allInstance()->any(u:User | u.id = id) ,
+		role:Role = Role.allInstance()->any(r:Role | r.roleCode = roleCode),
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departmentid)
+	
+	precondition:
+		user.oclIsUndefined() = false and 
+		dp.oclIsUndefined() = false
+							
+	postcondition:
+		user.Id = id and
+		user.name = name and
+		user.password = password and
+		user.belongedDepartment = dp and
+		user.phone = phone and
+		user.belongedRole = role and
+		result = true
+}
+
+//entity delete operation 
+Contract  SystemService::deleteUser(id : Integer) : Boolean {
+	
+
+	definition:
+		user:User = User.allInstance()->any(u:User | u.Id = id)
+
+	precondition:
+		user.oclIsUndefined() = false 
+	
+	postcondition:
+		User.allInstance()->excludes(user) and
+		result = true
+}
+
+Contract  SystemService::createRole(id : Integer, remark : String , roleCode : Integer) : Boolean {
+	
+	definition:
+		role:Role = Role.allInstance()->any(r:Role | r.id = id)
+		
+	precondition:
+		role.oclIsUndefined() = true 
+	
+	postcondition:
+		let r:Role in
+		r.oclIsNew() and
+		r.id = id and
+		r.remark = remark and
+		r.roleCode = roleCode and
+		Role.allInstance()->includes(r) and
+		result = true
+}
+
+//entity query operation 
+Contract  SystemService::queryRole(id : Integer) : Role {
+	
+	definition:
+		role:Role = Role.allInstance()->any(r:Role | r.id = id)
+	
+	precondition:
+		role.oclIsUndefined() = false
+		
+	postcondition:
+		result = role
+}
+
+//entity modify operation 
+Contract  SystemService::modifyRole(id : Integer, remark : String , roleCode : Integer) : Boolean{
+	
+	definition:
+		role:Role = Role.allInstance()->any(r:Role | r.id = id)
+	
+	precondition:
+		role.oclIsUndefined() = false
+							
+	postcondition:
+		role.Id = id and
+		role.remark = remark and
+		role.roleCode = roleCode and
+		result = true
+}
+
+//entity delete operation 
+Contract  SystemService::deleteRole(id : Integer) : Boolean {
+	
+
+	definition:
+		role:Role = Role.allInstance()->any(r:Role | r.Id = id)
+
+	precondition:
+		role.oclIsUndefined() = false 
+	
+	postcondition:
+		Role.allInstance()->excludes(role) and
+		result = true
+}
+
+//		id:Integer
+//		name:String
+Contract  SystemService::createDepartment(id : Integer, name : String) : Boolean {
+	
+	definition:
+		dep:Department = Department.allInstance()->any(dep:Department | dep.id = id)
+		
+	precondition:
+		dep.oclIsUndefined() = true 
+	
+	postcondition:
+		let d:Department in
+		d.oclIsNew() and
+		d.id = id and
+		d.name = name and
+		Department.allInstance()->includes(d) and
+		result = true
+}
+
+//entity query operation 
+Contract  SystemService::queryDepartment(id : Integer) : Department {
+	
+	definition:
+		dep:Department = Department.allInstance()->any(dep:Department | dep.id = id)
+	
+	precondition:
+		dep.oclIsUndefined() = false
+		
+	postcondition:
+		result = dep
+}
+
+//entity modify operation 
+Contract  SystemService::modifyDepartment(id : Integer, name : String) : Boolean{
+	
+	definition:
+		dep:Department = Department.allInstance()->any(dep:Department | r.id = id)
+	
+	precondition:
+		dep.oclIsUndefined() = false
+							
+	postcondition:
+		dep.Id = id and
+		dep.name = name and
+		result = true
+}
+
+//entity delete operation 
+Contract  SystemService::deleteDepartment(id : Integer) : Boolean {
+	
+
+	definition:
+		dep:Department = Department.allInstance()->any(dep:Department | dep.Id = id)
+
+	precondition:
+		dep.oclIsUndefined() = false 
+	
+	postcondition:
+		Department.allInstance()->excludes(dep) and
+		result = true
+}
+
