@@ -1,0 +1,111 @@
+UseCaseModel RM2PT {
+
+	UC::UserProcess()
+
+	Actor User {
+
+		UserProcess
+		
+	}
+
+}
+DomainModel RM2PT { 
+	
+	Entity User {
+		id : Integer
+		name : String
+		password : String
+
+	}
+}
+
+
+
+
+Service UserProcessService {
+	[Operation]
+	login(name,password)
+	register(name,password)
+	[TempProperty]
+	currentUser : User
+	[WorkFlow]
+	UserProcessWF 
+}
+
+
+Workflow UserProcessWF {
+
+	[User UserProcessService]
+	
+	User {
+		
+		ActivityStart
+
+	register
+
+	login
+
+	ActivityFinal
+
+	}
+
+}
+
+Interaction UserProcessInteraction {
+
+	[Participants: User UserProcessService]
+
+	CallMessage::login(login loginSender->loginStart)
+	ReturnMessage::loginReturn(loginFinish->loginReturnReceiver login)
+	
+	
+	CallMessage::register(register registerSender->registerStart)
+	ReturnMessage::registerReturn(registerFinish->registerReturnReceiver register)
+	
+	
+	
+	Execution::login(UserProcessService loginStart loginFinish)
+	Execution::register(UserProcessService registerStart registerFinish)
+	
+	
+	
+	MessageEnd::loginSender(User login)
+	ExecutionEnd::loginStart(UserProcessService login)
+	ExecutionEnd::loginFinish(UserProcessService login)
+	MessageEnd::loginReturnReceiver(User loginReturn)
+	
+	
+	
+	MessageEnd::registerSender(User register)
+	ExecutionEnd::registerStart(UserProcessService register)
+	ExecutionEnd::registerFinish(UserProcessService register)
+	MessageEnd::registerReturnReceiver(User registerReturn)
+}
+
+Contract UserProcessService::login(name:String, password:String) : Boolean{
+	
+	definition:
+		user:User = User.allInstance()->any(u:User | u.name = name and u.password = password)
+	precondition:
+		user.oclIsUndefined() = false
+	postcondition:
+		self.currentUser = user and
+		result = true
+}
+
+Contract UserProcessService::register(id:Integer ,name:String, password:String) : Boolean{
+	
+	definition:
+		user:User = User.allInstance()->any(u:User | u.id = id)
+	precondition:
+		user.oclIsUndefined() = true
+	postcondition:
+		
+		let u:User in
+		u.oclIsNew() and
+		u.name = name and 
+		u.password = password and
+		User.allInstance()->includes(u) and
+		result = true
+}
+

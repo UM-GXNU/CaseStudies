@@ -1,0 +1,1635 @@
+UseCaseModel Airport {
+	
+	UC::manageUser()
+	UC::manageRole()
+	UC::manageDepartment()
+	UC::manageDeviceInfo()
+	UC::manageDeviceLocationGroup()
+	UC::manageEquipmentFailureType()
+	UC::manageDeviceStatus()
+	UC::manageDeviceAssociationGroup()
+	UC::userLogin()
+	UC::WorkReportSubmit()
+	
+	
+	UC::submitRepair()
+	UC::submitRepairExtra()
+	UC::notAcceptAa()
+	UC::acceptedAa()
+	UC::completedAa()
+	UC::TbInfo()
+	UC::notAcceptBa()
+	UC::acceptedBa()
+	UC::completedBa()
+	UC::allocation()
+	UC::transmit()
+	UC::backtransmit()
+	UC::SetWorkTask()
+	UC::SetTerminalEquipment()
+	
+	
+	UC::arbitration()
+	UC::approval()
+	
+	
+	UC::receiveTb()
+	UC::completeTb()
+	UC::rocessingFees()
+	UC::SetOperationStatus()
+	
+	
+	Actor Share{
+		userLogin
+		WorkReportSubmit
+	}
+
+	 
+	Actor Ordinary{ //普通用户
+		
+		
+		submitRepair
+		submitRepairExtra
+		notAcceptAa
+		acceptedAa
+		completedAa
+		TbInfo    //报修工单信息
+		}
+	Actor Manage{ //候管管理用户和部门经理
+		
+		approval
+		arbitration
+	}
+	Actor Master{ //部门队长
+	
+		notAcceptBa
+		acceptedBa
+		completedBa
+		allocation   //分配给部门员工
+		transmit     //转发
+		backtransmit  //退回
+		SetWorkTask   //设置值班表
+		SetTerminalEquipment  //设置候机楼设备
+	}
+	Actor Worker{ //部门人员
+	
+		completeTb
+		receiveTb
+		rocessingFees   //维修费用
+		SetOperationStatus
+	}
+	
+	
+	Actor SystemManage {
+		manageUser
+		manageRole
+		manageDepartment
+		manageDeviceInfo
+		manageDeviceLocationGroup
+		manageEquipmentFailureType
+		manageDeviceStatus
+		manageDeviceAssociationGroup
+	}
+}
+DomainModel Airport {
+	
+	//	 工作汇报
+    Entity WorkReport{
+    	id:Integer
+    	name:String //报告人
+    	content:String //报告内容
+    	time:Date //报告日期
+    }
+//  值班表
+	Entity WorkTask{
+		id:Integer
+		staffName:String //值班人姓名
+		adminName:String //排班人姓名
+		phone:String //联系电话
+		section:String //值班区间
+		remark:String 
+	}
+
+//  候机楼设备表
+	Entity TerminalEquipment{
+		id:Integer
+		name:String   //设备名称
+		address:String // 设备地址
+		description:String  //设备描述
+		type:Integer //设备类型
+		remark:String 
+		
+		[Refer]
+		BelongedDeviceInfo : DeviceInfo (Association)
+	} 
+//  候机楼设备运行状况表
+	Entity OperationStatus{
+		id:Integer
+		remark:String 
+		status:String  // 状态
+		value:String   // 当前值
+		valueUnit:String  //值单位
+		time :Date 	//上报时间
+		name:String //上报人
+		[Refer]
+		BelongedEquipment : TerminalEquipment (Association)
+	}
+
+
+	Entity User {
+		id : Integer
+		name : String
+		password : String
+		phone : String
+		
+		[Refer]
+		BelongedRole : Role (Association)
+		BelongedDepartment : Department(Association)
+		[INV]
+//		inv UniqueCashDeskId
+	}
+	Entity Role {
+		id : Integer     // 普通用户，科室经理 ，管理人员 ，部门队长 ，部门人员
+		roleCode :Integer
+		remark : String
+		[Refer]
+		ContainedUsers : User* (Association)
+	}
+	Entity Department{ //部门信息表
+	
+		//部门层级   ----
+		//上级部门id ----
+		
+		id:Integer
+		name:String
+		contactRerson:String //部门联系人
+		principal:String //部门负责人
+		phone :String //部门联系电话
+		briefInfo :String //部门简介
+		describeContent:String //部门职责描述
+		remark:String //备注
+	}
+	
+	
+	Entity TbRepair { //报修任务表
+		id : Integer
+		repairName : String			//报修人
+		phone : String				//报修电话
+		place : String    			//报修位置 //应该有具体的几个位置供选择
+		repairsStatus : Integer   	//故障类别   机械设备、制冷制暖设备、照明及供电设备、供水及土建相关、汽车维修预约
+		DeviceId : String   		//设备编号
+		status :Integer 			//报修处理状态  ---此字段使用 0 ，1 ，2    分别表示isAccept=0 ，1   isComplete = 1  
+		describeContent : String	//故障描述
+		score:Integer      			//评价分数  1~5星
+		remark:String				//备注
+		time:Date  					//上报时间
+		[Refer]
+		BelongedUser : User (Association)    //报修人
+		BelongedDepartment:Department (Association)			//报修部门   机关各部室、安检、地勤、逸飞翔、货站、候管、航信、安保、航食、空港、运指、公安
+		AssoicatedTRE : TbRepairExtra (Association)
+		BelongedEFT : EquipmentFailureType (Association)    //故障类型
+		[INV]
+//		inv repairsStatus
+	}
+	Entity TbRepairExtra { //报修任务处理  --------------上报人将报修任务指定给一个维修部门
+		
+		id : Integer
+		admin:Boolean  		//候管审核
+		isReject:Boolean	//退回
+		rejectCause:String	//退回原因
+		relayNum:Integer    //转发次数
+		arbitrate:Boolean	//是否已经仲裁
+		isAccept:Boolean	//是否受理
+		isComplete:Boolean	//是否完成维修
+		time:Date  			//完成时间
+		resolvent:String    //故障处理行为
+		cause:String        //故障原因
+		//
+		[Refer]
+		BelongedTbRepair : TbRepair (Association)
+		BelongedAssignDepart: Department(Association) //所属部门编号
+		BelongedDistribution:User(Association)	//所派工用户
+//		BelongedRelayDep:Department(Association)	//转发部门    机电队、暖通队、电力队、综合队、汽车修理厂
+		[INV]
+		
+	}
+	//报修任务处理维修费用
+	Entity ProcessingFees{
+		id:Integer
+		projectName:String //维修项目
+		price:Real //维修单价
+		number:Integer //维修数量
+		TotalPrice:Real //维修总价
+		remake:String //备注
+		[Refer]
+		BelongedTbRepair : TbRepair (Association)
+	}
+	
+	Entity DeviceInfo{  //设备信息表
+		id:Integer //
+		name:String //设备名称
+		brand:String //设备品牌
+		type:String //设备型号
+		address:String //设备安装位置
+		adminName:String //设备管理人
+		contactsName:String //设备联系人方式
+		status:Integer //设备当前状态
+		remark:String //备注
+		[Refer]
+		BelongedDLG:DeviceLocationGroup(Association)   //设备位置分组
+		BelongedEFT:EquipmentFailureType(Association)  //设备故障类型
+		BelongedDAG:DeviceAssociationGroup(Association)  //设备关联分组
+		BelongedDepartment:Department(Association)  //设备所属部门
+		                                            //故障所属部门 ----
+	}
+	
+	Entity DeviceLocationGroup{ //设备位置分组
+		id:Integer //
+		name:String //设备位置名称
+		remark:String //备注
+	}
+	
+	Entity EquipmentFailureType{ //设备故障类型
+		id:Integer 
+		name:String //
+		describeContent:String //设备故障自检描述
+		remark:String //备注
+		[Refer]
+		BelongedDepartment:Department(Association) //设备故障类型所属部门
+		
+	}
+	Entity DeviceStatus{ //设备状态
+		id:Integer //
+		name:String //
+		remark:String //备注
+	}
+	
+	Entity DeviceAssociationGroup{ //设备关联分组
+		id:Integer //
+		name:String //
+		remark:String
+	}
+	
+	
+	
+}
+
+
+
+
+////
+Service SystemService {
+
+	[Operation]
+	createUser(id, name,password,phone,roleCode)
+	queryUser()
+	modifyUser(id, name,passwoed,phone,roleCode)
+	deleteUser()
+	
+	createRole(id,remark,roleCode)
+	queryRole()
+	modifyRole(id,remark,roleCode)
+	deleteRole()
+	
+	createDepartment()
+	queryDepartment()
+	modifyDepartment()
+	deleteDepartment()
+	
+	createDeviceInfo()
+	queryDeviceInfo()
+	modifyDeviceInfo()
+	deleteDeviceInfo()
+	
+	createDeviceLocationGroup()
+	queryDeviceLocationGroup()
+	modifyDeviceLocationGroup()
+	deleteDeviceLocationGroup()
+	
+	createEquipmentFailureType()
+	queryEquipmentFailureType()
+	modifyEquipmentFailureType()
+	deleteEquipmentFailureType()
+	
+	createDeviceStatus()
+	queryDeviceStatus()
+	modifyDeviceStatus()
+	deleteDeviceStatus()
+	
+	createEquipmentFailureType()
+	queryEquipmentFailureType()
+	modifyEquipmentFailureType()
+	deleteEquipmentFailureType()
+	
+
+}
+
+
+Service RoutineService {
+	[Operation]
+	userLogin()
+	WorkReportSubmit()
+	
+	[TempProperty]
+	currentUser : User
+}
+
+Service RepairService {
+	[Operation]
+	submitRepair()
+	submitRepairExtra()
+	
+	notAcceptAa()  	//普通用户未受理列表
+	acceptedAa()	//普通用户已受理列表
+	completedAa()	//普通用户已完成列表
+	TbInfo()		//某条保修单的信息
+	[TempProperty]
+	currentUser : User
+	currentTbRepair : TbRepair
+}
+
+Service HandleService {
+	[Operation]
+	notAcceptBa()   //部门队长未受理列表
+	acceptedBa()    //部门队长已受理列表
+	completedBa()   //部门队长已完成列表
+	allocation()    //指派员工
+	transmit()      //转发其他部门
+	backtransmit()  //退回工单
+	SetWorkTask()  	//排班
+	SetTerminalEquipment()  //候机楼设备
+	[TempProperty]
+	currentUser : User
+	currentTbRepair : TbRepair
+}
+
+
+Service MaintainService{
+	[Operation]
+	receiveTb()  	//受理报修单
+	completeTb()	//完成报修
+	rocessingFees()	//设置报修任务处理维修费用
+	SetOperationStatus()	//设置候机楼设备运行状况
+	[TempProperty]
+	currentUser : User
+	currentTbRepair : TbRepair
+}
+Service ManageService {
+
+	[Operation]
+	approval()  	//候管审批
+	arbitration()	//仲裁
+	[TempProperty]
+	currentUser : User
+	currentTbRepair : TbRepair
+}
+
+
+
+
+Workflow RepairProcess {
+
+	[ Share Ordinary Manage Master Worker RoutineService  RepairService ManageService HandleService MaintainService]
+	
+	Manage{
+		
+		ActivityStart
+		
+		userLogin
+		
+		Switch -> option {
+
+			case: op1 -> approval 
+			case: op2 -> arbitration
+		}
+		
+		ActivityFinal
+		
+	}
+	Worker{
+		
+		ActivityStart
+		
+		userLogin
+		
+		Switch -> option {
+
+			case: op1 -> receiveTb 
+			case: op2 -> completeTb
+			case: op3 -> rocessingFees
+		}
+		
+		ActivityFinal
+		
+	}
+	Master{
+		
+		ActivityStart
+		
+		userLogin
+		
+		Switch -> option {
+
+			case: op1 -> allocation 
+			case: op2 -> transmit
+			case: op3 -> backtransmit
+		}
+		
+		ActivityFinal
+		
+	}
+	
+	Ordinary {
+		
+		ActivityStart
+	
+	userLogin
+	
+	submitRepair
+	
+	submitRepairExtra
+	
+
+	Switch -> option {
+
+		case: op1 -> notAcceptAa 
+		case: op2 -> acceptedAa
+		case: op3 -> completedAa
+	}
+	
+	TbInfo
+
+	ActivityFinal
+
+	}
+
+}
+
+
+Interaction UserProcessInteraction {
+	
+	[Participants: Ordinary  RoutineService ManageService MaintainService HandleService RepairService]
+	
+
+	CallMessage::userLogin(userLogin loginSender->loginStart)
+	ReturnMessage::loginReturn(loginFinish->loginReturnReceiver userLogin)
+	
+	
+	CallMessage::submitRepair(submitRepair submitRepairSender->submitRepairStart)
+	ReturnMessage::submitRepairReturn(submitRepairFinish->submitRepairReturnReceiver submitRepair)
+//	
+	CallMessage::submitRepairExtra(submitRepairExtra submitRepairExtraSender->submitRepairExtraStart)
+	ReturnMessage::submitRepairExtraReturn(submitRepairExtraFinish->submitRepairExtraReturnReceiver submitRepairExtra)
+//	
+	CallMessage::notAcceptAa(notAcceptAa notAcceptAaSender->notAcceptAaStart)
+	ReturnMessage::notAcceptAaReturn(notAcceptAaFinish->notAcceptAaReturnReceiver notAcceptAa)
+	CallMessage::acceptedAa(acceptedAa acceptedAaSender->acceptedAaStart)
+	ReturnMessage::acceptedAaReturn(acceptedAaFinish->acceptedAaReturnReceiver acceptedAa)
+	CallMessage::completedAa(completedAa completedAaSender->completedAaStart)
+	ReturnMessage::completedAaReturn(completedAaFinish->completedAaReturnReceiver completedAa)
+	
+	CallMessage::TbInfo(TbInfo TbInfoSender->TbInfoStart)
+	ReturnMessage::TbInfoReturn(TbInfoFinish->TbInfoReturnReceiver TbInfo)
+
+//	
+	Execution::userLogin(RoutineService loginStart loginFinish)
+	Execution::submitRepair(RepairService submitRepairStart submitRepairFinish)
+	Execution::submitRepairExtra(RepairService submitRepairExtraStart submitRepairExtraFinish)
+	Execution::notAcceptAa(RepairService notAcceptAaStart notAcceptAaFinish)
+	Execution::acceptedAa(RepairService acceptedAaStart acceptedAaFinish)
+	Execution::completedAa(RepairService completedAaStart completedAaFinish)
+	Execution::TbInfo(RepairService TbInfoStart TbInfoFinish)
+	Execution::scoring(RepairService scoringStart scoringFinish)
+	
+	
+	CombinedFragment::OptAlt->alt {
+
+		[Participants: Ordinary RepairService]
+
+		OptAltStart->OptAltFinish
+
+		Operand::opt1(opt1 opt2)
+		Operand::opt2(opt2 opt3)
+		Operand::opt3(opt3 OptAltFinish)
+	}
+	
+//	
+//	
+//	
+	MessageEnd::loginSender(Ordinary userLogin)
+	ExecutionEnd::loginStart(RoutineService userLogin)
+	ExecutionEnd::loginFinish(RoutineService userLogin)
+	MessageEnd::loginReturnReceiver(Ordinary loginReturn)
+	
+	
+	MessageEnd::submitRepairSender(Ordinary submitRepair)
+	ExecutionEnd::submitRepairStart(RepairService submitRepair)
+	ExecutionEnd::submitRepairFinish(RepairService submitRepair)
+	MessageEnd::submitRepairReturnReceiver(Ordinary submitRepairReturn)
+	
+	
+	MessageEnd::submitRepairExtraSender(Ordinary submitRepairExtra)
+	ExecutionEnd::submitRepairExtraStart(RepairService submitRepairExtra)
+	ExecutionEnd::submitRepairExtraFinish(RepairService submitRepairExtra)
+	MessageEnd::submitRepairExtraReturnReceiver(Ordinary submitRepairExtraReturn)
+	
+
+	
+	CombinedFragmentEnd::OptAltStart(OptAlt)
+	OperandEnd::opt1(opt1)
+	MessageEnd::notAcceptAaSender(Ordinary notAcceptAa)
+	ExecutionEnd::notAcceptAaStart(RepairService notAcceptAa)
+	ExecutionEnd::notAcceptAaFinish(RepairService notAcceptAa)
+	MessageEnd::notAcceptAaReturnReceiver(Ordinary notAcceptAaReturn)
+	
+	OperandEnd::opt2(opt2)
+	MessageEnd::acceptedAaSender(Ordinary acceptedAa)
+	ExecutionEnd::acceptedAaStart(RepairService acceptedAa)
+	ExecutionEnd::acceptedAaFinish(RepairService acceptedAa)
+	MessageEnd::acceptedAaReturnReceiver(Ordinary acceptedAaReturn)
+	
+	OperandEnd::opt3(opt3)
+	MessageEnd::completedAaSender(Ordinary completedAa)
+	ExecutionEnd::completedAaStart(RepairService completedAa)
+	ExecutionEnd::completedAaFinish(RepairService completedAa)
+	MessageEnd::completedAaReturnReceiver(Ordinary completedAaReturn)
+	
+	CombinedFragmentEnd::OptAltFinish(OptAlt)
+	
+	MessageEnd::TbInfoSender(Ordinary TbInfo)
+	ExecutionEnd::TbInfoStart(RepairService TbInfo)
+	ExecutionEnd::TbInfoFinish(RepairService TbInfo)
+	MessageEnd::TbInfoReturnReceiver(Ordinary TbInfoReturn)
+	ExecutionEnd::scoringStart(RepairService scoring)
+	ExecutionEnd::scoringFinish(RepairService scoring)
+
+}
+
+
+////-----------------------------------------------------------------------------------------
+									//用户登录
+									
+Contract  RoutineService::userLogin(name : String , password : String) : Boolean {
+	
+	definition:
+		user:User = User.allInstance()->any(u:User | u.name = name and u.password = password)
+	precondition:
+		user.oclIsUndefined() = false
+	postcondition:
+		self.currentUser = user and
+		result = true
+}
+////-----------------------------------------------------------------------------------------
+									//工作汇报
+									
+Contract  RoutineService::WorkReportSubmit(name:String ,content:String ,section:String ,remark:String) : Boolean {
+		
+	precondition:
+		currentUser.oclIsUndefined() = false
+	postcondition:
+		let wr:WorkReport in
+		wr.oclIsNew() and
+		wr.name = name and
+		wr.time.isEqual(Now) and
+		wr.content = content and
+		WorkReport.allInstance()->includes(wr) and
+		result = true 
+}
+
+////-----------------------------------------------------------------------------------------
+									//普通用户
+
+//报修单位（必选）、报修人（必填）、反馈电话（必填）、报修位置（必填）、故障类别（必选）,、故障描述（必选）
+Contract  RepairService::submitRepair(departmentid:Integer , AssignDepartId:Integer ,repairName : String, phone : String, place : String,repairsStatus : Integer , DeviceId : String , describeContent:String,FailureTypeId:Integer) : Boolean {
+	definition:
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departmentid),
+		a_dp:Department = Department.allInstance()->any(dp:Department | dp.id = AssignDepartId),
+		eft:EquipmentFailureType = EquipmentFailureType.allInstance()->any(e:EquipmentFailureType | e.id = FailureTypeId)
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		repairName.oclIsUndefined() = false and 
+		phone.oclIsUndefined() = false and 
+		place.oclIsUndefined() = false and
+		repairsStatus.oclIsUndefined() = false and
+		dp.oclIsUndefined() = false and
+		a_dp.oclIsUndefined() = false and
+		DeviceId.oclIsUndefined() = false and
+		eft.oclIsUndefined() = false
+		
+	postcondition:
+		let tr:TbRepair in
+		tr.oclIsNew() and
+		tr.BelongedDepartment = dp and
+		tr.repairName = repairName and
+		tr.phone = phone and
+		tr.place = place and
+		tr.repairsStatus = repairsStatus and
+		tr.DeviceId = DeviceId and
+		tr.describeContent = describeContent and
+		tr.time.isEqual(Now) and
+		tr.status = 0 and
+		tr.BelongedEFT = eft and
+		tr.BelongedUser = currentUser and
+		TbRepair.allInstance()->includes(tr) and
+		self.currentTbRepair = tr and
+		
+		if tr.id.oclIsUndefined() = false
+			then 
+				let tre:TbRepairExtra in
+				tre.oclIsNew() and
+				//如果报修区域是候机楼则需要候管审核
+				tre.id = tr.id and
+				if tr.place = "候机楼"
+					then tre.admin=false
+				else 
+					tre.admin=true
+				endif and
+				tre.isReject = false and
+				tre.isAccept = false and
+				tre.isComplete = false and
+				tre.arbitrate = false and
+				tre.relayNum = 0 and
+				tre.BelongedTbRepair = tr and
+				tre.BelongedAssignDepart = a_dp and
+				TbRepairExtra.allInstance()->includes(tre) and
+				result = true
+			else 
+				result = false
+		endif
+		
+		
+}
+
+////报修任务处理  --------------上报人将报修任务指定给一个维修部门	
+//Contract  RepairService::submitRepairExtra(departmentid:Integer,TbRId:Integer) : Boolean {
+//	
+//	definition:
+//		tbRepair:TbRepair = TbRepair.allInstance()->any(tbRepair:TbRepair | tbRepair.id = TbRId) ,
+//		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departmentid)
+//	
+//	precondition:
+//	
+//		currentUser.oclIsUndefined() = false and 
+//		dp.oclIsUndefined() = false and 
+//		tbRepair.AssoicatedTRE.oclIsUndefined() = true and 
+//		tbRepair.oclIsUndefined() = false 
+//		
+//	postcondition:
+//		let tre:TbRepairExtra in
+//		tre.oclIsNew() and
+//		//如果报修区域是候机楼则需要候管审核
+//		tre.id = tbRepair.id and
+//		if tbRepair.place = "候机楼"
+//		then tre.admin=false
+//		else tre.admin=true
+//		endif and
+//		tre.isReject = false and
+//		tre.isAccept = false and
+//		tre.isComplete = false and
+//		tre.arbitrate = false and
+//		tre.relayNum = 0 and
+//		tre.BelongedTbRepair = tbRepair and
+//		tre.BelongedAssignDepart = dp and
+//		TbRepairExtra.allInstance()->includes(tre) and
+//		result = true
+//}
+					
+////查询当前用户未受理的信息
+Contract  RepairService::notAcceptAa() : Set(TbRepair) {
+		
+	precondition:
+		currentUser.oclIsUndefined() = false
+		
+	postcondition:
+		result = TbRepair.allInstance()->select(tr:TbRepair | tr.status = 0 and tr.BelongedUser = currentUser)
+}
+
+//查询当前用户已受理的信息
+Contract  RepairService::acceptedAa() : Set(TbRepair) {
+	
+	precondition:
+		currentUser.oclIsUndefined() = false
+		
+	postcondition:
+		result = TbRepair.allInstance()->select(tr:TbRepair | tr.status = 1 and tr.BelongedUser = currentUser)
+}
+//查询当前用户已完成的信息
+Contract  RepairService::completedAa() : Set(TbRepair) {
+	
+	precondition:
+		currentUser.oclIsUndefined() = false
+		
+	postcondition:
+		result = TbRepair.allInstance()->select(tr:TbRepair | tr.status = 2 and tr.BelongedUser = currentUser)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//查询某一个保修单的详细信息
+Contract  RepairService::TbInfo(id:Integer) : TbRepair {
+	definition:
+		tr:TbRepair = TbRepair.allInstance()->any(tr:TbRepair | tr.id = id)
+		
+	precondition:
+		tr.oclIsUndefined() = false and currentUser.oclIsUndefined() = false
+		
+	postcondition:
+		result = tr
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//-----------------------------------------------------------------------------------------
+					//部门队长
+					
+Contract  HandleService::notAcceptBa() : Set(TbRepairExtra) {
+	//查询当前部门的未受理工单
+	//1.获取当前队长用户的信息
+	//2.判断该用户所属部门
+	//3.根据三个参数进行查询-----是否受理，候管是否审核，所属部门
+	definition:
+		depart1:Department =Department.allInstance()->any(department:Department | department.id = 1),
+		depart2:Department =Department.allInstance()->any(department:Department | department.id = 2),
+		depart3:Department =Department.allInstance()->any(department:Department | department.id = 3),
+		depart4:Department =Department.allInstance()->any(department:Department | department.id = 4)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		depart1.oclIsUndefined() = false and 
+		depart2.oclIsUndefined() = false and 
+		depart3.oclIsUndefined() = false and 
+		depart4.oclIsUndefined() = false 
+		
+	postcondition:
+		if currentUser.BelongedDepartment = depart1
+			then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true  and tbe.BelongedAssignDepart = depart1)
+		else 
+			if currentUser.BelongedDepartment = depart2
+				then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true  and tbe.BelongedAssignDepart = depart2)
+			else 
+					if currentUser.BelongedDepartment = depart3
+							then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true  and tbe.BelongedAssignDepart = depart3)
+					else 
+							result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = false and tbe.Admin = true  and tbe.BelongedAssignDepart = depart4)
+					endif
+			endif 
+
+		endif 
+		
+
+}
+
+Contract  HandleService::acceptedBa() : Set(TbRepairExtra) {
+	
+	definition:
+	
+	   	depart1:Department =Department.allInstance()->any(department:Department | department.id = 1),
+		depart2:Department =Department.allInstance()->any(department:Department | department.id = 2),
+		depart3:Department =Department.allInstance()->any(department:Department | department.id = 3),
+		depart4:Department =Department.allInstance()->any(department:Department | department.id = 4)
+		
+	precondition:
+	
+		currentUser.oclIsUndefined() = false and 
+		depart1.oclIsUndefined() = false and 
+		depart2.oclIsUndefined() = false and 
+		depart3.oclIsUndefined() = false and 
+		depart4.oclIsUndefined() = false  
+		
+	postcondition:
+		if  depart1 = currentUser.BelongedDepartment
+			then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = true and tbe.IsComplete = false  and tbe.BelongedAssignDepart = depart1)
+		else 
+			if currentUser.BelongedDepartment = depart2
+				then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = true and tbe.IsComplete = false  and tbe.BelongedAssignDepart = depart2)
+			else 
+					if currentUser.BelongedDepartment = depart3
+						then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = true and tbe.IsComplete = false  and tbe.BelongedAssignDepart = depart3)
+					else 
+						result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsAccept = true and tbe.IsComplete = false  and tbe.BelongedAssignDepart = depart4)
+					endif
+			endif 
+		endif 
+		
+
+}
+
+
+Contract  HandleService::completedBa() : Set(TbRepairExtra) {
+	
+	definition:
+	    depart1:Department =Department.allInstance()->any(department:Department | department.id = 1),
+		
+		depart2:Department =Department.allInstance()->any(department:Department | department.id = 2),
+		
+		depart3:Department =Department.allInstance()->any(department:Department | department.id = 3),
+		
+		depart4:Department =Department.allInstance()->any(department:Department | department.id = 4)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		depart1.oclIsUndefined() = false and 
+		depart2.oclIsUndefined() = false and 
+		depart3.oclIsUndefined() = false and 
+		depart4.oclIsUndefined() = false 
+		
+	postcondition:
+		if currentUser.BelongedDepartment = depart1
+			then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart1)
+		else
+			if currentUser.BelongedDepartment = depart2
+				then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart2)
+			else 
+					if currentUser.BelongedDepartment = depart3
+						then result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart3)
+					else 
+						result = TbRepairExtra.allInstance()->select(tbe:TbRepairExtra | tbe.IsComplete = true and tbe.BelongedAssignDepart = depart4)
+					endif
+			endif
+		endif 
+		
+
+}
+
+//队长派工
+Contract  HandleService::allocation(userId : Integer,tbId : Integer) : Boolean {
+	definition:
+		user:User = User.allInstance()->any(user:User | user.id = userId),
+		tbRepairExtra:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbId)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and user.oclIsUndefined() = false and tbRepairExtra.oclIsUndefined() = false
+		
+	postcondition:
+		tbRepairExtra.BelongedDistribution = user and
+		result = true
+}
+
+
+
+//队长转发其他部门
+Contract  HandleService::transmit(departId : Integer,tbId : Integer) : Boolean {
+	definition:
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departId),
+		tbRepairExtra:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbId)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		dp.oclIsUndefined() = false and 
+		tbRepairExtra.oclIsUndefined() = false and 
+		tbRepairExtra.arbitrate = false and
+		currentUser.BelongedDepartment = tbRepairExtra.BelongedAssignDepart
+		
+	postcondition:
+		tbRepairExtra.relayNum = tbRepairExtra.relayNum@pre + 1 and
+		tbRepairExtra.BelongedAssignDepart = dp and
+		result = true
+}
+
+
+//队长退回工单
+Contract  HandleService::backtransmit(tbId : Integer ,rejectCause:String) : Boolean {
+	
+	definition:
+		tbRepairExtra:TbRepairExtra = TbRepairExtra.allInstance()->any(tbRepair:TbRepair | tbRepair.id = tbId)
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and tbRepairExtra.oclIsUndefined() = false and 
+		currentUser.BelongedDepartment = tbRepairExtra.BelongedAssignDepart
+		
+	postcondition:
+		tbRepairExtra.isReject = true and
+		tbRepairExtra.rejectCause = rejectCause and 
+		result = true
+}
+
+//设置值班表
+Contract  HandleService::SetWorkTask(staffName:String ,adminName:String,phone:String,section:String,remark:String) : Boolean {
+		
+	precondition:
+		
+		currentUser.oclIsUndefined() = false and staffName.oclIsUndefined() = false and adminName.oclIsUndefined() = false 
+		
+	postcondition:
+		
+		let wt:WorkTask in
+		wt.oclIsNew() and
+		wt.staffName = staffName and
+		wt.adminName = adminName and
+		wt.phone = phone and
+		wt.section = section and
+		wt.remark = remark and
+		WorkTask.allInstance()->includes(wt) and
+		result = true 
+}
+
+//设置候机楼设备
+Contract  HandleService::SetTerminalEquipment(name:String ,address:String,description:String,type:Integer,remark:String , DeviceInfoId:Integer) : Boolean {
+	definition:
+		d:DeviceInfo = DeviceInfo.allInstance()->any(di:DeviceInfo | di.id = DeviceInfoId)	
+	precondition:
+		currentUser.oclIsUndefined() = false and name.oclIsUndefined() = false and address.oclIsUndefined() = false and d.oclIsUndefined() = false 
+		
+	postcondition:
+		let te:TerminalEquipment in
+		te.oclIsNew() and
+		te.name = name and
+		te.address = address and
+		te.description = description and
+		te.type = type and
+		te.remark = remark and
+		te.BelongedDeviceInfo = d and
+		TerminalEquipment.allInstance()->includes(te) and
+		result = true 
+}
+//------------------------------------------------------------
+//          部门经理
+//仲裁
+Contract  ManageService::arbitration(tbId : Integer , departmentid : Integer) : Boolean {
+	
+	definition:
+		tbRepairExtra:TbRepairExtra = TbRepairExtra.allInstance()->any(tbRepair:TbRepair | tbRepair.id = tbId),
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departmentid) ,
+		role:Role = Role.allInstance()->any(role:Role | role.id = 1)   //部门经理和侯管角色
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and tbRepairExtra.oclIsUndefined() = false and tbRepairExtra.relayNum > 3 and dp.oclIsUndefined() = false and currentUser.BelongedRole = role
+		
+	postcondition:
+		tbRepairExtra.arbitrate = true and
+		tbRepairExtra.BelongedAssignDepart = dp and
+		result = true
+}
+
+
+//候管审批
+Contract  ManageService::approval(tbId : Integer , isApproved : Boolean) : Boolean {
+	
+	
+	definition:
+		tbRepair:TbRepair = TbRepair.allInstance()->any(tbRepair:TbRepair | tbRepair.id = tbId),
+		tre:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbId),
+		role:Role = Role.allInstance()->any(role:Role | role.id = 1)   //部门经理和侯管角色
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		currentUser.BelongedRole = role and
+		tbRepair.oclIsUndefined() = false and 
+		tre.oclIsUndefined() = false and 
+		tbRepair.place = "候机楼"
+		
+	postcondition:
+		if isApproved = true
+		then 
+			tre.isReject=false and 
+			tre.admin = true and
+			result = true
+		else 
+			tre.isReject=true and 
+			tre.admin = false and 
+			result = true
+		endif 
+	
+}
+
+
+//------------------------------------------------------------
+//          部门员工
+//接收工单
+Contract  MaintainService::receiveTb(tbId : Integer) : Boolean {
+	definition:
+		tre:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbId),
+		role:Role = Role.allInstance()->any(role:Role | role.id = 3)  //维修人员角色
+	precondition:
+		currentUser.oclIsUndefined() = false and tre.oclIsUndefined() = false and currentUser.BelongedRole = role
+	postcondition:
+		tre.isAccept = true and 
+		tre.BelongedTbRepair.status = 1 and
+		result = true 
+}
+//完成工单
+Contract  MaintainService::completeTb(tbId : Integer , cause:String , resolvent:String) : Boolean {
+	definition:
+		tre:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbId),
+		role:Role = Role.allInstance()->any(role:Role | role.id = 3)  //维修人员角色
+	precondition:
+		currentUser.oclIsUndefined() = false and tre.oclIsUndefined() = false and currentUser.BelongedRole = role
+	postcondition:
+		tre.isComplete = true and 
+		tre.cause = cause and 
+		tre.resolvent = resolvent and 
+		tre.BelongedTbRepair.status = 2 and
+		result = true 
+}
+
+
+//维修费用
+Contract  MaintainService::rocessingFees(tbId : Integer , projectName:String , price:Real ,number:Integer ,remake:String) : Boolean {
+	definition:
+		tre:TbRepairExtra = TbRepairExtra.allInstance()->any(tre:TbRepairExtra | tre.id = tbId),
+		role:Role = Role.allInstance()->any(role:Role | role.id = 3)  //维修人员角色
+		
+	precondition:
+		currentUser.oclIsUndefined() = false and tre.oclIsUndefined() = false and currentUser.BelongedRole = role
+	postcondition:
+		let pf:ProcessingFees in
+		pf.oclIsNew() and
+		pf.projectName = projectName and
+		pf.price = price and
+		pf.number = number and
+		pf.TotalPrice = price * number and
+		pf.remake = remake and
+		pf.BelongedTbRepair = tre.BelongedTbRepair and
+		ProcessingFees.allInstance()->includes(pf) and
+		result = true 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+////  候机楼设备运行状况记录
+Contract  MaintainService::SetOperationStatus(name:String ,value:String,valueUnit:String,status:String,remark:String,EquipmentId:Integer) : Boolean {
+	definition:
+		te:TerminalEquipment = TerminalEquipment.allInstance()->any(ter:TerminalEquipment | ter.id = EquipmentId)
+			
+	precondition:
+		currentUser.oclIsUndefined() = false and 
+		name.oclIsUndefined() = false and 
+		value.oclIsUndefined() = false and 
+		valueUnit.oclIsUndefined() = false and
+		te.oclIsUndefined() = false 
+	postcondition:
+		let os:OperationStatus in
+		os.oclIsNew() and
+		os.name = name and
+		os.value = value and
+		os.valueUnit = valueUnit and
+		os.status = status and
+		os.remark = remark and
+		os.time.isEqual(Now) and
+		os.BelongedEquipment = te and
+		OperationStatus.allInstance()->includes(os) and
+		result = true 
+}
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+
+
+Contract  SystemService::createUser(id : Integer, name : String , password : String , phone : String, roleCode : Integer ,departmentid : Integer) : Boolean {
+	
+	definition:
+	
+		user:User = User.allInstance()->any(u:User | u.id = id) ,
+		role:Role = Role.allInstance()->any(r:Role | r.roleCode = roleCode),
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departmentid)
+		
+	precondition:
+	
+		user.oclIsUndefined() = true and
+		role.oclIsUndefined() = false and 
+		dp.oclIsUndefined() = false
+	
+	postcondition:
+	
+		let u:User in
+		u.oclIsNew() and
+		u.Id = id and
+		u.name = name and
+		u.password = password and
+		u.phone = phone and
+		u.belongedDepartment = dp and
+		u.belongedRole = role and
+		User.allInstance()->includes(u) and
+		result = true
+}
+
+//entity query operation 
+Contract  SystemService::queryUser(id : Integer) : User {
+	
+	definition:
+		user:User = User.allInstance()->any(u:User | u.Id = id)
+	
+	precondition:
+		user.oclIsUndefined() = false
+		
+	postcondition:
+		result = user
+}
+
+//entity modify operation 
+Contract  SystemService::modifyUser(id : Integer, name : String , password : String , phone : String, roleCode : Integer ,departmentid : Integer) : Boolean{
+	
+	definition:
+		user:User = User.allInstance()->any(u:User | u.id = id) ,
+		role:Role = Role.allInstance()->any(r:Role | r.roleCode = roleCode),
+		dp:Department = Department.allInstance()->any(dp:Department | dp.id = departmentid)
+	
+	precondition:
+		user.oclIsUndefined() = false and 
+		dp.oclIsUndefined() = false
+							
+	postcondition:
+		user.Id = id and
+		user.name = name and
+		user.password = password and
+		user.belongedDepartment = dp and
+		user.phone = phone and
+		user.belongedRole = role and
+		result = true
+}
+
+//entity delete operation 
+Contract  SystemService::deleteUser(id : Integer) : Boolean {
+	
+
+	definition:
+		user:User = User.allInstance()->any(u:User | u.Id = id)
+
+	precondition:
+		user.oclIsUndefined() = false 
+	
+	postcondition:
+		User.allInstance()->excludes(user) and
+		result = true
+}
+
+Contract  SystemService::createRole(id:Integer ,remark : String , roleCode : Integer) : Boolean {
+	
+	definition:
+		role:Role = Role.allInstance()->any(ro:Role | ro.id = id)
+		
+	precondition:
+		role.oclIsUndefined() = true 
+	
+	postcondition:
+		let r:Role in
+		r.Id = id and
+		r.oclIsNew() and
+		r.remark = remark and
+		r.roleCode = roleCode and
+		Role.allInstance()->includes(r) and
+		result = true
+}
+
+//entity query operation 
+Contract  SystemService::queryRole(id : Integer) : Role {
+	
+	definition:
+		role:Role = Role.allInstance()->any(r:Role | r.id = id)
+	
+	precondition:
+		role.oclIsUndefined() = false
+		
+	postcondition:
+		result = role
+}
+
+//entity modify operation 
+Contract  SystemService::modifyRole(id : Integer, remark : String , roleCode : Integer) : Boolean{
+	
+	definition:
+		role:Role = Role.allInstance()->any(r:Role | r.id = id)
+	
+	precondition:
+		role.oclIsUndefined() = false
+							
+	postcondition:
+		role.Id = id and
+		role.remark = remark and
+		role.roleCode = roleCode and
+		result = true
+}
+
+//entity delete operation 
+Contract  SystemService::deleteRole(id : Integer) : Boolean {
+	
+
+	definition:
+		role:Role = Role.allInstance()->any(r:Role | r.Id = id)
+
+	precondition:
+		role.oclIsUndefined() = false 
+	
+	postcondition:
+		Role.allInstance()->excludes(role) and
+		result = true
+}
+
+
+Contract  SystemService::createDepartment(id:Integer ,name : String ,contactRerson:String,principal:String,phone :String,briefInfo :String,describeContent:String,remark:String) : Boolean {
+	
+	definition:
+		dep:Department = Department.allInstance()->any(depa:Department | dep.id = id)
+		
+	precondition:
+		dep.oclIsUndefined() = true 
+	
+	postcondition:
+		let d:Department in
+		d.oclIsNew() and
+		d.Id = id and
+		d.name = name and
+		d.contactRerson = contactRerson and
+		d.principal = principal and
+		d.phone = phone and
+		d.briefInfo = briefInfo and
+		d.describeContent = describeContent and
+		d.remark = remark and
+		Department.allInstance()->includes(d) and
+		result = true
+}
+
+//entity query operation 
+Contract  SystemService::queryDepartment(id : Integer) : Department {
+	
+	definition:
+		dep:Department = Department.allInstance()->any(d:Department | dep.id = id)
+	
+	precondition:
+		dep.oclIsUndefined() = false
+		
+	postcondition:
+		result = dep
+}
+
+//entity modify operation 
+Contract  SystemService::modifyDepartment(id : Integer, name : String ,contactRerson : String , principal : String , phone :String , briefInfo :String , describeContent : String , remark : String ) : Boolean{
+	
+	definition:
+		dep:Department = Department.allInstance()->any(d:Department | r.id = id)
+	
+	precondition:
+		dep.oclIsUndefined() = false
+							
+	postcondition:
+		dep.name = name and
+		dep.contactRerson = contactRerson and
+		dep.principal = principal and
+		dep.phone = phone and
+		dep.briefInfo = briefInfo and
+		dep.describeContent = describeContent and
+		dep.remark = remark and
+		result = true
+}
+
+//entity delete operation 
+Contract  SystemService::deleteDepartment(id : Integer) : Boolean {
+	
+
+	definition:
+		dep:Department = Department.allInstance()->any(d:Department | dep.Id = id)
+
+	precondition:
+		dep.oclIsUndefined() = false 
+	
+	postcondition:
+		Department.allInstance()->excludes(dep) and
+		result = true
+}
+
+
+
+Contract  SystemService::createDeviceInfo(id:Integer ,name : String ,brand:String,type:String,address :String,adminName :String,contactsName:String,remark:String) : Boolean {
+	
+	definition:
+		di:DeviceInfo = DeviceInfo.allInstance()->any(dev:DeviceInfo | dep.id = id)
+		
+	precondition:
+		di.oclIsUndefined() = true 
+	
+	postcondition:
+		let d:DeviceInfo in
+		d.oclIsNew() and
+		d.Id = id and
+		d.name = name and
+		d.brand = brand and
+		d.type = type and
+		d.address = address and
+		d.adminName = adminName and
+		d.contactsName = contactsName and
+		d.remark = remark and
+		DeviceInfo.allInstance()->includes(d) and
+		result = true
+}
+
+//entity query operation 
+Contract  SystemService::queryDeviceInfo(id : Integer) : DeviceInfo {
+	
+	definition:
+		dep:DeviceInfo = DeviceInfo.allInstance()->any(dev:DeviceInfo | dep.id = id)
+	
+	precondition:
+		dep.oclIsUndefined() = false
+		
+	postcondition:
+		result = dep
+}
+
+//entity modify operation 
+Contract  SystemService::modifyDeviceInfo(id:Integer ,name : String ,brand:String,type:String,address :String,adminName :String,contactsName:String,remark:String) : Boolean{
+	
+	definition:
+		dep:DeviceInfo = DeviceInfo.allInstance()->any(dev:DeviceInfo | r.id = id)
+	
+	precondition:
+		dep.oclIsUndefined() = false
+							
+	postcondition:
+		dep.name = name and
+		dep.brand = brand and
+		dep.type = type and
+		dep.address = address and
+		dep.adminName = adminName and
+		dep.contactsName = contactsName and
+		dep.remark = remark and
+		result = true
+}
+
+//entity delete operation 
+Contract  SystemService::deleteDeviceInfo(id : Integer) : Boolean {
+	
+
+	definition:
+		dep:DeviceInfo = DeviceInfo.allInstance()->any(dev:DeviceInfo | dep.Id = id)
+
+	precondition:
+		dep.oclIsUndefined() = false 
+	
+	postcondition:
+		DeviceInfo.allInstance()->excludes(dep) and
+		result = true
+}
+
+
+
+Contract  SystemService::createDeviceLocationGroup(id:Integer,name:String , remark : String): Boolean {
+	
+	definition:
+		dg:DeviceLocationGroup = DeviceLocationGroup.allInstance()->any(dg:DeviceLocationGroup | dg.Id = id)
+		
+	precondition:
+		dg.oclIsUndefined() = true 
+		
+	postcondition:
+		let d:DeviceLocationGroup in
+		d.oclIsNew() and
+		d.Id = id and
+		d.name = name and
+		d.remark = remark and
+		DeviceLocationGroup.allInstance()->includes(d) and
+		result = true
+}
+Contract  SystemService::queryDeviceLocationGroup(id:Integer): DeviceLocationGroup {
+	
+	definition:
+		dg:DeviceLocationGroup = DeviceLocationGroup.allInstance()->any(dg:DeviceLocationGroup | dg.Id = id)
+		
+	precondition:
+		dg.oclIsUndefined() = false
+		
+	postcondition:
+		result = dg
+}
+Contract  SystemService::modifyDeviceLocationGroup(id:Integer,name:String , remark : String): Boolean {
+	definition:
+		dg:DeviceLocationGroup = DeviceLocationGroup.allInstance()->any(dg:DeviceLocationGroup | dg.Id = id)
+		
+	precondition:
+		dg.oclIsUndefined() = false
+		
+	postcondition:
+		dg.Id = id and
+		dg.name = name and
+		dg.remark = remark and
+		result = true
+}
+Contract  SystemService::deleteDeviceLocationGroup(id:Integer): Boolean {
+	definition:
+		dg:DeviceLocationGroup = DeviceLocationGroup.allInstance()->any(dg:DeviceLocationGroup | dg.Id = id)
+		
+	precondition:
+		dg.oclIsUndefined() = false
+		
+	postcondition:
+		DeviceLocationGroup.allInstance()->excludes(dg) and
+		result = true
+}
+
+
+
+
+Contract  SystemService::createEquipmentFailureType(id:Integer,name:String , describeContent:String ,remark:String): Boolean {
+	definition:
+		eft:EquipmentFailureType = EquipmentFailureType.allInstance()->any(eft:EquipmentFailureType | eft.Id = id)
+	precondition:
+		eft.oclIsUndefined() = true 
+	postcondition:
+		let e:EquipmentFailureType in
+		e.oclIsNew() and
+		e.Id = id and
+		e.name = name and
+		e.remark = remark and
+		e.describeContent = describeContent and
+		EquipmentFailureType.allInstance()->includes(e) and
+		result = true
+}
+Contract  SystemService::queryEquipmentFailureType(id:Integer): EquipmentFailureType {
+	definition:
+		eft:EquipmentFailureType = EquipmentFailureType.allInstance()->any(eft:EquipmentFailureType | eft.Id = id)
+	precondition:
+		eft.oclIsUndefined() = false 
+	postcondition:
+		result = eft
+}
+Contract  SystemService::modifyEquipmentFailureType(id:Integer,name:String , describeContent:String ,remark:String): Boolean {
+	definition:
+		eft:EquipmentFailureType = EquipmentFailureType.allInstance()->any(eft:EquipmentFailureType | eft.Id = id)
+	precondition:
+		eft.oclIsUndefined() = false
+	postcondition:
+		eft.Id = id and
+		eft.name = name and
+		eft.remark = remark and
+		eft.describeContent = describeContent and
+		result = true
+}
+Contract  SystemService::deleteEquipmentFailureType(id:Integer): Boolean {
+	definition:
+		eft:EquipmentFailureType = EquipmentFailureType.allInstance()->any(eft:EquipmentFailureType | eft.Id = id)
+	precondition:
+		eft.oclIsUndefined() = false
+	postcondition:
+		EquipmentFailureType.allInstance()->excludes(eft) and
+		result = true
+}
+
+
+
+
+Contract  SystemService::createDeviceStatus(id:Integer ,name:String ,remark:String): Boolean {
+	definition:
+		ds:DeviceStatus = DeviceStatus.allInstance()->any(ds:DeviceStatus | ds.Id = id)
+	precondition:
+		ds.oclIsUndefined() = true 
+	postcondition:
+		let d:DeviceStatus in
+		d.oclIsNew() and
+		d.Id = id and
+		d.name = name and
+		d.remark = remark and
+		DeviceStatus.allInstance()->includes(d) and
+		result = true
+}
+Contract  SystemService::queryDeviceStatus(id:Integer): DeviceStatus {
+	definition:
+		ds:DeviceStatus = DeviceStatus.allInstance()->any(ds:DeviceStatus | ds.Id = id)
+	precondition:
+		ds.oclIsUndefined() = false 
+	postcondition:
+		result = ds
+}
+Contract  SystemService::modifyDeviceStatus(id:Integer,name:String ,remark:String): Boolean {
+	definition:
+		ds:DeviceStatus = DeviceStatus.allInstance()->any(ds:DeviceStatus | ds.Id = id)
+	precondition:
+		ds.oclIsUndefined() = false 
+	postcondition:
+		ds.Id = id and
+		ds.name = name and
+		ds.remark = remark and
+		result = true
+}
+Contract  SystemService::deleteDeviceStatus(id:Integer): Boolean {
+	definition:
+		ds:DeviceStatus = DeviceStatus.allInstance()->any(ds:DeviceStatus | ds.Id = id)
+	precondition:
+		ds.oclIsUndefined() = false 
+	postcondition:
+		DeviceStatus.allInstance()->excludes(ds) and
+		result = true
+}
+
+
+
+
+Contract  SystemService::createDeviceAssociationGroup(id:Integer,name:String ,remark:String): Boolean {
+	definition:
+		dag:DeviceAssociationGroup = DeviceAssociationGroup.allInstance()->any(dag:DeviceAssociationGroup | dag.Id = id)
+	precondition:
+		dag.oclIsUndefined() = true 
+	postcondition:
+		let d:DeviceAssociationGroup in
+		d.oclIsNew() and
+		d.Id = id and
+		d.name = name and
+		d.remark = remark and
+		DeviceAssociationGroup.allInstance()->includes(d) and
+		result = true
+}
+Contract  SystemService::queryDeviceAssociationGroup(id:Integer): DeviceAssociationGroup {
+	definition:
+		dag:DeviceAssociationGroup = DeviceAssociationGroup.allInstance()->any(dag:DeviceAssociationGroup | dag.Id = id)
+	precondition:
+		dag.oclIsUndefined() = false 
+	postcondition:
+		result = dag
+}
+Contract  SystemService::modifyDeviceAssociationGroup(id:Integer ,name:String ,remark:String): Boolean {
+	definition:
+		dag:DeviceAssociationGroup = DeviceAssociationGroup.allInstance()->any(dag:DeviceAssociationGroup | dag.Id = id)
+	precondition:
+		dag.oclIsUndefined() = false 
+	postcondition:
+		dag.Id = id and
+		dag.name = name and
+		dag.remark = remark and
+		result = true
+}
+Contract  SystemService::deleteDeviceAssociationGroup(id:Integer): Boolean {
+	definition:
+		dag:DeviceAssociationGroup = DeviceAssociationGroup.allInstance()->any(dag:DeviceAssociationGroup | dag.Id = id)
+	precondition:
+		dag.oclIsUndefined() = false 
+	postcondition:
+		DeviceAssociationGroup.allInstance()->excludes(dag) and
+		result = true
+}
+
